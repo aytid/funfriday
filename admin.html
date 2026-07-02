@@ -20,7 +20,7 @@
     background:radial-gradient(circle at 12% 8%, rgba(95,208,104,0.06), transparent 40%), var(--bg);
     color:var(--text); font-family:var(--font-body); min-height:100vh;
   }
-  .container{max-width:1100px; margin:0 auto; padding:32px 20px 70px;}
+  .container{max-width:1400px; margin:0 auto; padding:32px 20px 70px;width:95%;}
   header.top{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:26px; flex-wrap:wrap; gap:12px;}
   .eyebrow{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.16em; color:var(--green); text-transform:uppercase; display:flex; align-items:center; gap:8px;}
   .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green); box-shadow:0 0 0 3px rgba(95,208,104,0.18); display:inline-block;}
@@ -61,7 +61,7 @@
   th{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-faint); text-align:left; padding:8px 8px; border-bottom:1px solid var(--border-soft);}
   td{padding:10px 8px; border-bottom:1px solid var(--border-soft); vertical-align:top;}
   tr:hover td{background:rgba(255,255,255,0.015);}
-  .qtext-cell{max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .qtext-cell{max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .mono{font-family:var(--font-mono); font-size:12px; color:var(--text-dim);}
   .row-actions{display:flex; gap:6px;}
   .row-actions button{padding:6px 10px; font-size:11.5px;}
@@ -79,6 +79,32 @@
   .toast.ok{color:var(--green);}
   .toast.bad{color:var(--red);}
   .empty-row td{text-align:center; color:var(--text-faint); font-family:var(--font-mono); padding:26px 0;}
+  .table-wrap{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.table-wrap::-webkit-scrollbar{
+    height:8px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb{
+    background:#3b4949;
+    border-radius:10px;
+}
+
+table{
+    width:100%;
+    min-width:900px;
+    border-collapse:collapse;
+}
+.row-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -110,7 +136,8 @@
         <h3 id="listTitle">All tickets</h3>
         <button class="primary" id="newBtn">+ New question</button>
       </div>
-      <div class="panel-body" style="padding:0 0 6px;">
+<div class="panel-body" style="padding:0 0 6px;">
+    <div class="table-wrap">
         <table>
           <thead>
             <tr><th>#</th><th>Question</th><th>Category</th><th>Timer</th><th>Status</th><th></th></tr>
@@ -118,7 +145,8 @@
           <tbody id="qTableBody">
             <tr class="empty-row"><td colspan="6">Loading…</td></tr>
           </tbody>
-        </table>
+</table>
+</div>
       </div>
     </div>
 
