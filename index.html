@@ -207,6 +207,16 @@ let timerInterval = null;
 let timeLeft = 0;
 let answered = false;
 
+
+function shuffle(array){
+  for(let i=array.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [array[i],array[j]]=[array[j],array[i]];
+  }
+  return array;
+}
+
+
 async function loadQuestions(){
   const { data, error } = await sb
     .from('questions')
@@ -218,7 +228,16 @@ async function loadQuestions(){
     stage.innerHTML = `<div class="empty">Couldn't load the queue.<br><b>${escapeHtml(error.message)}</b></div>`;
     return;
   }
-  questions = data || [];
+  const savedQuestions = localStorage.getItem('quizQuestions');
+  if(savedQuestions){
+    questions = JSON.parse(savedQuestions);
+  }else{
+    questions = shuffle(data || []);
+    localStorage.setItem('quizQuestions', JSON.stringify(questions));
+  }
+
+  idx = parseInt(localStorage.getItem('quizIndex') || '0');
+  score = parseInt(localStorage.getItem('quizScore') || '0');
   if(questions.length === 0){
     stage.innerHTML = `<div class="empty">No open tickets in the queue yet.<br><b>Add some from the admin page.</b></div>`;
     progressTag.textContent = "0 tickets";
@@ -233,6 +252,9 @@ function ticketId(n){
 }
 
 function renderQuestion(){
+  localStorage.setItem('quizIndex', idx);
+  localStorage.setItem('quizScore', score);
+  localStorage.setItem('quizQuestions', JSON.stringify(questions));
   clearInterval(timerInterval);
   answered = false;
   const q = questions[idx];
@@ -385,6 +407,7 @@ function resolveQuestion(chosenKey){
 function nextQuestion(){
   if(idx < questions.length - 1){
     idx += 1;
+    localStorage.setItem('quizIndex', idx);
     renderQuestion();
   } else {
     showDone();
@@ -392,6 +415,9 @@ function nextQuestion(){
 }
 
 function showDone(){
+  localStorage.removeItem('quizQuestions');
+  localStorage.removeItem('quizIndex');
+  localStorage.removeItem('quizScore');
   progressTag.innerHTML = `<b>Queue closed</b>`;
   stage.innerHTML = `
     <div class="ticket done-card">
