@@ -215,7 +215,21 @@ function shuffle(array){
   }
   return array;
 }
+function resetQuiz(){
 
+    if(!confirm("Restart the quiz from the beginning?")) return;
+
+    localStorage.removeItem("quizQuestions");
+    localStorage.removeItem("quizIndex");
+    localStorage.removeItem("quizScore");
+
+    clearInterval(timerInterval);
+
+    idx = 0;
+    score = 0;
+
+    showStartScreen();
+}
 
 async function loadQuestions(){
   const { data, error } = await sb
@@ -243,14 +257,48 @@ async function loadQuestions(){
     progressTag.textContent = "0 tickets";
     return;
   }
-  progressTag.innerHTML = `Question <b>1</b> / ${questions.length}`;
-  renderQuestion();
+  progressTag.innerHTML = `${questions.length} Questions`;
+  showStartScreen();
 }
 
 function ticketId(n){
   return 'INC' + String(1000000 + (n+1)).slice(1);
 }
+function showStartScreen(){
 
+  stage.innerHTML = `
+    <div class="ticket done-card">
+      <div class="eyebrow" style="justify-content:center;margin-bottom:14px;">
+        Friday Fun
+      </div>
+
+      <div class="big">Ready for the Quiz?</div>
+
+      <p style="color:var(--text-dim);max-width:500px;margin:18px auto;line-height:1.6;">
+        You will get one question at a time.
+        <br><br>
+        Each question has a time limit.
+        <br>
+        Once time runs out, you'll need to reveal the answer before moving on.
+      </p>
+
+      <div class="score">${questions.length}</div>
+      <div style="font-family:var(--font-mono);color:var(--text-dim);margin-bottom:25px;">
+        Questions
+      </div>
+
+      <button class="primary" id="startQuizBtn">
+        🚀 Start Quiz
+      </button>
+    </div>
+  `;
+
+  document.getElementById("startQuizBtn").addEventListener("click", () => {
+      idx = parseInt(localStorage.getItem("quizIndex")) || 0;
+      score = parseInt(localStorage.getItem("quizScore")) || 0;
+      renderQuestion();
+  });
+}
 function renderQuestion(){
   localStorage.setItem('quizIndex', idx);
   localStorage.setItem('quizScore', score);
@@ -294,6 +342,7 @@ function renderQuestion(){
       <div class="controls">
         <div class="status" id="statusMsg">Awaiting resolution…</div>
         <div class="btnrow">
+              <button id="resetBtn">Reset Quiz</button>
           <button id="revealBtn">Reveal answer</button>
           <button class="primary" id="nextBtn" disabled>${idx === questions.length-1 ? 'Finish' : 'Next question'}</button>
         </div>
@@ -308,6 +357,7 @@ function renderQuestion(){
   });
   document.getElementById('revealBtn').addEventListener('click', () => resolveQuestion(null));
   document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+  document.getElementById('resetBtn').addEventListener('click', resetQuiz);
 
   startTimer(limit);
 }
@@ -428,7 +478,7 @@ function showDone(){
     </div>
   `;
   document.getElementById('restartBtn').addEventListener('click', () => {
-    idx = 0; score = 0; renderQuestion();
+    idx = 0; score = 0; showStartScreen();
   });
 }
 
