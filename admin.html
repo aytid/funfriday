@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin // Ticket Queue Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#12181a; --card:#1d2528; --card-hi:#232c2f; --border:#324040; --border-soft:#293433;
+    --text:#e9efec; --text-dim:#8fa39c; --text-faint:#5c6c68;
+    --green:#5fd068; --green-dim:#3a7a44; --amber:#f2b84b; --red:#ef5b5b;
+    --font-display:'Space Grotesk', sans-serif; --font-mono:'JetBrains Mono', monospace; --font-body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at 12% 8%, rgba(95,208,104,0.06), transparent 40%), var(--bg);
+    color:var(--text); font-family:var(--font-body); min-height:100vh;
+  }
+  .container{max-width:1100px; margin:0 auto; padding:32px 20px 70px;}
+  header.top{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:26px; flex-wrap:wrap; gap:12px;}
+  .eyebrow{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.16em; color:var(--green); text-transform:uppercase; display:flex; align-items:center; gap:8px;}
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green); box-shadow:0 0 0 3px rgba(95,208,104,0.18); display:inline-block;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:26px; margin:4px 0 0; letter-spacing:-.01em;}
+  .who{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:10px;}
+
+  button{font-family:var(--font-mono); font-size:13px; font-weight:600; letter-spacing:.03em; padding:10px 16px; border-radius:8px; border:1px solid var(--border); background:var(--card-hi); color:var(--text); cursor:pointer; transition:all .15s ease;}
+  button:hover{border-color:var(--text-dim);}
+  button.primary{background:var(--green); color:#0d130e; border-color:var(--green);}
+  button.primary:hover{filter:brightness(1.08);}
+  button.danger{color:var(--red); border-color:rgba(239,91,91,.35);}
+  button.danger:hover{background:rgba(239,91,91,.08);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  button.ghost{background:transparent;}
+  input, textarea, select{
+    width:100%; background:var(--card-hi); border:1px solid var(--border); color:var(--text);
+    font-family:var(--font-body); font-size:14px; padding:10px 12px; border-radius:8px; outline:none;
+  }
+  input:focus, textarea:focus, select:focus{border-color:var(--green-dim);}
+  label{font-family:var(--font-mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-dim); display:block; margin-bottom:6px;}
+
+  /* LOGIN */
+  .login-card{max-width:380px; margin:80px auto; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:30px;}
+  .login-card h2{font-family:var(--font-display); font-size:20px; margin:10px 0 20px;}
+  .field{margin-bottom:14px;}
+  .login-err{font-family:var(--font-mono); font-size:12.5px; color:var(--red); margin-top:10px; min-height:16px;}
+
+  /* LAYOUT */
+  .grid{display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--border-soft);}
+  .panel-head h3{font-family:var(--font-display); font-size:15px; margin:0; font-weight:600;}
+  .panel-body{padding:14px 18px 18px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-faint); text-align:left; padding:8px 8px; border-bottom:1px solid var(--border-soft);}
+  td{padding:10px 8px; border-bottom:1px solid var(--border-soft); vertical-align:top;}
+  tr:hover td{background:rgba(255,255,255,0.015);}
+  .qtext-cell{max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mono{font-family:var(--font-mono); font-size:12px; color:var(--text-dim);}
+  .row-actions{display:flex; gap:6px;}
+  .row-actions button{padding:6px 10px; font-size:11.5px;}
+  .pill{font-family:var(--font-mono); font-size:10.5px; padding:3px 8px; border-radius:20px; border:1px solid var(--border);}
+  .pill.on{color:var(--green); border-color:rgba(95,208,104,.35); background:rgba(95,208,104,.08);}
+  .pill.off{color:var(--text-faint);}
+
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .form-grid .full{grid-column:1/-1;}
+  .opt-input{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .opt-input .key{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); width:18px;}
+  .helptext{font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin-top:4px;}
+  .save-row{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
+  .toast{font-family:var(--font-mono); font-size:12.5px; margin-top:10px; min-height:16px;}
+  .toast.ok{color:var(--green);}
+  .toast.bad{color:var(--red);}
+  .empty-row td{text-align:center; color:var(--text-faint); font-family:var(--font-mono); padding:26px 0;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-card" style="display:none;">
+  <div class="eyebrow">Admin access</div>
+  <h2>Sign in to manage the queue</h2>
+  <div class="field"><label>Email</label><input id="loginEmail" type="email" placeholder="you@company.com"></div>
+  <div class="field"><label>Password</label><input id="loginPass" type="password" placeholder="••••••••"></div>
+  <button class="primary" id="loginBtn" style="width:100%;">Sign in</button>
+  <div class="login-err" id="loginErr"></div>
+</div>
+
+<div class="container" id="appScreen" style="display:none;">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Admin // Ticket Queue Builder</div>
+      <h1>Manage Questions</h1>
+    </div>
+    <div class="who">
+      <span id="whoEmail"></span>
+      <button id="logoutBtn" class="ghost">Sign out</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h3 id="listTitle">All tickets</h3>
+        <button class="primary" id="newBtn">+ New question</button>
+      </div>
+      <div class="panel-body" style="padding:0 0 6px;">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Question</th><th>Category</th><th>Timer</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="qTableBody">
+            <tr class="empty-row"><td colspan="6">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3 id="formTitle">New question</h3></div>
+      <div class="panel-body">
+        <form id="qForm">
+          <div class="form-grid">
+            <div class="full">
+              <label>Question text</label>
+              <textarea id="fQuestion" rows="3" required placeholder="e.g. Which table stores Incident records in ServiceNow?"></textarea>
+            </div>
+
+            <div class="full">
+              <div class="opt-input"><span class="key">A</span><input id="fOptA" placeholder="Option A" required></div>
+              <div class="opt-input"><span class="key">B</span><input id="fOptB" placeholder="Option B" required></div>
+              <div class="opt-input"><span class="key">C</span><input id="fOptC" placeholder="Option C"></div>
+              <div class="opt-input"><span class="key">D</span><input id="fOptD" placeholder="Option D"></div>
+            </div>
+
+            <div>
+              <label>Correct option</label>
+              <select id="fCorrect" required>
+                <option value="a">A</option>
+                <option value="b">B</option>
+                <option value="c">C</option>
+                <option value="d">D</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Time limit (seconds)</label>
+              <input id="fTime" type="number" min="3" max="300" value="10" required>
+              <div class="helptext">Defaults to 10s if left blank</div>
+            </div>
+
+            <div>
+              <label>Category</label>
+              <input id="fCategory" placeholder="e.g. Flow Designer">
+            </div>
+
+            <div>
+              <label>Difficulty</label>
+              <select id="fDifficulty">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Order index</label>
+              <input id="fOrder" type="number" min="0" value="0">
+            </div>
+
+            <div>
+              <label>Active in game</label>
+              <select id="fActive">
+                <option value="true" selected>Yes — show in queue</option>
+                <option value="false">No — hidden</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button type="button" id="cancelBtn" class="ghost">Cancel</button>
+            <button type="submit" class="primary" id="saveBtn">Save question</button>
+          </div>
+          <div class="toast" id="formToast"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================== CONFIG ====================== */
+const SUPABASE_URL = "https://lstmvrrqfrlyxcdboybt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdG12cnJxZnJseXhjZGJveWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NjY3NDgsImV4cCI6MjA4OTA0Mjc0OH0.-YdYgC30dTnsSshuVIFIkiQkgJyq1_djrkZfjIbMBeg";
+/* ====================================================== */
+
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const loginScreen = document.getElementById('loginScreen');
+const appScreen = document.getElementById('appScreen');
+let editingId = null;
+let allQuestions = [];
+
+/* ---------- AUTH ---------- */
+async function checkSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    showApp(session.user);
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin(){
+  loginScreen.style.display = 'block';
+  appScreen.style.display = 'none';
+}
+
+function showApp(user){
+  loginScreen.style.display = 'none';
+  appScreen.style.display = 'block';
+  document.getElementById('whoEmail').textContent = user.email;
+  loadQuestions();
+}
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errBox = document.getElementById('loginErr');
+  errBox.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    errBox.textContent = error.message;
+    return;
+  }
+  showApp(data.user);
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  showLogin();
+});
+
+/* ---------- LOAD / RENDER LIST ---------- */
+async function loadQuestions(){
+  const tbody = document.getElementById('qTableBody');
+  tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Loading…</td></tr>`;
+  const { data, error } = await sb.from('questions').select('*').order('order_index', { ascending:true });
+  if(error){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+    return;
+  }
+  allQuestions = data || [];
+  document.getElementById('listTitle').textContent = `All tickets (${allQuestions.length})`;
+  if(allQuestions.length === 0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No questions yet — add your first one.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allQuestions.map((q, i) => `
+    <tr>
+      <td class="mono">${i+1}</td>
+      <td class="qtext-cell" title="${escapeHtml(q.question_text)}">${escapeHtml(q.question_text)}</td>
+      <td class="mono">${escapeHtml(q.category || '—')}</td>
+      <td class="mono">${q.time_limit || 10}s</td>
+      <td><span class="pill ${q.is_active ? 'on':'off'}">${q.is_active ? 'active':'hidden'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button data-edit="${q.id}">Edit</button>
+          <button class="danger" data-del="${q.id}">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => editQuestion(btn.dataset.edit));
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => deleteQuestion(btn.dataset.del));
+  });
+}
+
+/* ---------- FORM ---------- */
+const form = document.getElementById('qForm');
+const formToast = document.getElementById('formToast');
+
+function resetForm(){
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'New question';
+  document.getElementById('saveBtn').textContent = 'Save question';
+  form.reset();
+  document.getElementById('fTime').value = 10;
+  document.getElementById('fOrder').value = allQuestions.length;
+  formToast.textContent = '';
+}
+
+document.getElementById('newBtn').addEventListener('click', resetForm);
+document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+function editQuestion(id){
+  const q = allQuestions.find(x => String(x.id) === String(id));
+  if(!q) return;
+  editingId = q.id;
+  document.getElementById('formTitle').textContent = 'Edit question';
+  document.getElementById('saveBtn').textContent = 'Update question';
+  document.getElementById('fQuestion').value = q.question_text || '';
+  document.getElementById('fOptA').value = q.option_a || '';
+  document.getElementById('fOptB').value = q.option_b || '';
+  document.getElementById('fOptC').value = q.option_c || '';
+  document.getElementById('fOptD').value = q.option_d || '';
+  document.getElementById('fCorrect').value = (q.correct_option || 'a').toLowerCase();
+  document.getElementById('fTime').value = q.time_limit || 10;
+  document.getElementById('fCategory').value = q.category || '';
+  document.getElementById('fDifficulty').value = (q.difficulty || 'medium').toLowerCase();
+  document.getElementById('fOrder').value = q.order_index || 0;
+  document.getElementById('fActive').value = String(!!q.is_active);
+  formToast.textContent = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteQuestion(id){
+  if(!confirm('Delete this question? This cannot be undone.')) return;
+  const { error } = await sb.from('questions').delete().eq('id', id);
+  if(error){ alert('Delete failed: ' + error.message); return; }
+  if(editingId === id) resetForm();
+  loadQuestions();
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  formToast.textContent = '';
+  formToast.className = 'toast';
+
+  const payload = {
+    question_text: document.getElementById('fQuestion').value.trim(),
+    option_a: document.getElementById('fOptA').value.trim(),
+    option_b: document.getElementById('fOptB').value.trim(),
+    option_c: document.getElementById('fOptC').value.trim() || null,
+    option_d: document.getElementById('fOptD').value.trim() || null,
+    correct_option: document.getElementById('fCorrect').value,
+    time_limit: parseInt(document.getElementById('fTime').value, 10) || 10,
+    category: document.getElementById('fCategory').value.trim() || null,
+    difficulty: document.getElementById('fDifficulty').value,
+    order_index: parseInt(document.getElementById('fOrder').value, 10) || 0,
+    is_active: document.getElementById('fActive').value === 'true',
+  };
+
+  let error;
+  if(editingId){
+    ({ error } = await sb.from('questions').update(payload).eq('id', editingId));
+  } else {
+    ({ error } = await sb.from('questions').insert(payload));
+  }
+
+  saveBtn.disabled = false;
+
+  if(error){
+    formToast.textContent = error.message;
+    formToast.className = 'toast bad';
+    return;
+  }
+
+  formToast.textContent = editingId ? 'Question updated.' : 'Question created.';
+  formToast.className = 'toast ok';
+  resetForm();
+  loadQuestions();
+});
+
+function escapeHtml(str){
+  if(str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+checkSession();
+</script>
+</body>
+</html>
