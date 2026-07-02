@@ -275,7 +275,13 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
   showLogin();
 });
-
+function shuffle(array){
+    for(let i=array.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [array[i],array[j]]=[array[j],array[i]];
+    }
+    return array;
+}
 /* ---------- LOAD / RENDER LIST ---------- */
 async function loadQuestions(){
   const tbody = document.getElementById('qTableBody');
@@ -285,7 +291,14 @@ async function loadQuestions(){
     tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
     return;
   }
-  allQuestions = data || [];
+  const savedQuestions = localStorage.getItem("quizQuestions");
+
+if(savedQuestions){
+    questions = JSON.parse(savedQuestions);
+}else{
+    questions = shuffle(data || []);
+    localStorage.setItem("quizQuestions", JSON.stringify(questions));
+}
   document.getElementById('listTitle').textContent = `All tickets (${allQuestions.length})`;
   if(allQuestions.length === 0){
     tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No questions yet — add your first one.</td></tr>`;
